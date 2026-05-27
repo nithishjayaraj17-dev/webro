@@ -73,27 +73,25 @@ export function BookingFormNew({ selectedTheme, onSuccess }: BookingFormProps) {
     setSubmitStatus('idle');
 
     try {
-      const submitFormData = new FormData();
-      submitFormData.append('_subject', `New Theme Booking - ${selectedTheme}`);
-      submitFormData.append('_replyto', formData.clientName);
-      submitFormData.append('Client Name', formData.clientName);
-      submitFormData.append('Phone Number', formData.phone);
-      submitFormData.append('Selected Theme', selectedTheme);
-      submitFormData.append('Reference Image', file ? formData.fileName : 'No image uploaded');
-
-      if (file) {
-        submitFormData.append('attachment', file);
-      }
-
-      const response = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      // Send to backend API which will forward to Formspree
+      const response = await fetch('/api/submit-booking', {
         method: 'POST',
-        body: submitFormData,
         headers: {
-          'Accept': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          _subject: `New Theme Booking - ${selectedTheme}`,
+          _replyto: 'nithishjayaraj17@gmail.com',
+          name: formData.clientName,
+          phone: formData.phone,
+          theme: selectedTheme || 'Not selected',
+          reference_image: file ? `File: ${formData.fileName}` : 'No image uploaded',
+        }),
       });
 
-      if (response.ok) {
+      const responseData = await response.json();
+
+      if (response.ok && responseData.success) {
         setSubmitStatus('success');
         setFormData({ clientName: '', phone: '', fileName: '' });
         setFile(null);
@@ -102,11 +100,12 @@ export function BookingFormNew({ selectedTheme, onSuccess }: BookingFormProps) {
         }, 2000);
       } else {
         setSubmitStatus('error');
-        setErrorMessage('Failed to submit form. Please try again.');
+        setErrorMessage(responseData.message || 'Failed to submit form. Please try again.');
       }
     } catch (error) {
+      console.error('[v0] Form submission error:', error);
       setSubmitStatus('error');
-      setErrorMessage('An error occurred. Please try again.');
+      setErrorMessage('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
